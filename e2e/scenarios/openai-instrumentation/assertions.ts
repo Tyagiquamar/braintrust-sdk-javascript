@@ -45,6 +45,7 @@ type RelevantEvent = {
 type OperationSpec = {
   childNames: readonly string[];
   nestedChildNames?: readonly string[];
+  nestedSpanCount?: number;
   expectsOutput: boolean;
   expectsModel?: boolean;
   expectsTimeToFirstToken: boolean;
@@ -54,6 +55,7 @@ type OperationSpec = {
   requiresResponsesCompact?: boolean;
   testName: string;
   validate?: (span: CapturedLogEvent | undefined) => void;
+  validateNested?: (spans: CapturedLogEvent[]) => void;
 };
 
 const EXPECTED_BATCH_OUTPUTS = new Map<string, string | undefined>([
@@ -168,6 +170,40 @@ function validateToolOutput(span: CapturedLogEvent | undefined): void {
       }),
     ]),
   );
+}
+
+function validateChatBatchSpans(spans: CapturedLogEvent[]): void {
+  expect(spans.map(batchPrompt).sort()).toEqual(
+    [...EXPECTED_BATCH_OUTPUTS.keys()].sort(),
+  );
+  for (const span of spans) {
+    const prompt = batchPrompt(span);
+    const firstChoice = Array.isArray(span.output)
+      ? asRecord(span.output[0])
+      : undefined;
+    const message = asRecord(firstChoice?.message);
+    const expectedOutput = EXPECTED_BATCH_OUTPUTS.get(prompt);
+    if (expectedOutput) {
+      expect(message?.content).toBe(expectedOutput);
+      expect(span.row.error).toBeUndefined();
+    } else {
+      expect(span.output).toBeUndefined();
+      expect(span.row.error).toContain("Batch fixture request failed");
+    }
+  }
+}
+
+function validateEmbeddingBatchSpans(spans: CapturedLogEvent[]): void {
+  expect(spans).toHaveLength(1);
+  const span = spans[0];
+  expect(span?.input).toEqual({ inputs: [{ content: "Paris" }] });
+  expect(span?.output).toEqual({ count: 1 });
+  expect(span?.row.error).toBeUndefined();
+  expect(span?.metrics).toMatchObject({
+    prompt_tokens: expect.any(Number),
+    tokens: expect.any(Number),
+  });
+  expect(span?.metrics?.completion_tokens).toBeUndefined();
 }
 
 const OPERATION_SPECS: readonly OperationSpec[] = [
@@ -309,6 +345,7 @@ const OPERATION_SPECS: readonly OperationSpec[] = [
   {
     childNames: ["openai.batch"],
     nestedChildNames: ["Chat Completion"],
+    nestedSpanCount: EXPECTED_BATCH_OUTPUTS.size,
     expectsModel: false,
     expectsOutput: false,
     expectsTimeToFirstToken: false,
@@ -319,6 +356,23 @@ const OPERATION_SPECS: readonly OperationSpec[] = [
       expect(span?.input).toBeUndefined();
       expect(span?.output).toBeUndefined();
     },
+    validateNested: validateChatBatchSpans,
+  },
+  {
+    childNames: ["openai.batch"],
+    nestedChildNames: ["Embedding"],
+    nestedSpanCount: 1,
+    expectsModel: false,
+    expectsOutput: false,
+    expectsTimeToFirstToken: false,
+    name: "openai-embedding-batch-operation",
+    operation: "embedding-batch",
+    testName: "captures OpenAI embedding Batch task and LLM span",
+    validate: (span) => {
+      expect(span?.input).toBeUndefined();
+      expect(span?.output).toBeUndefined();
+    },
+    validateNested: validateEmbeddingBatchSpans,
   },
   {
     childNames: ["openai.responses.create"],
@@ -796,12 +850,13 @@ export function defineOpenAIInstrumentationAssertions(options: {
         );
         expect(spanInstrumentationName(span)).toBe("openai");
         if (spec.nestedChildNames) {
+          expect(spec.nestedSpanCount).toBeDefined();
           const nested = findOpenAISpans(
             events,
             span?.span.id,
             spec.nestedChildNames,
           );
-          expect(nested).toHaveLength(EXPECTED_BATCH_OUTPUTS.size);
+          expect(nested).toHaveLength(spec.nestedSpanCount!);
           for (const child of nested) {
             expect(spanInstrumentationName(child)).toBe("openai");
           }
@@ -866,38 +921,23 @@ export function defineOpenAIInstrumentationAssertions(options: {
         }
 
         if (spec.nestedChildNames) {
+          expect(spec.nestedSpanCount).toBeDefined();
           const nested = findOpenAISpans(
             events,
             span?.span.id,
             spec.nestedChildNames,
           );
-          expect(nested).toHaveLength(EXPECTED_BATCH_OUTPUTS.size);
+          expect(nested).toHaveLength(spec.nestedSpanCount!);
           expect(span?.span.parentIds).toEqual([operation?.span.id ?? ""]);
-          expect(nested.map(batchPrompt).sort()).toEqual(
-            [...EXPECTED_BATCH_OUTPUTS.keys()].sort(),
-          );
           for (const child of nested) {
-            const prompt = batchPrompt(child);
-            const firstChoice = Array.isArray(child.output)
-              ? asRecord(child.output[0])
-              : undefined;
-            const message = asRecord(firstChoice?.message);
-
             expect(child.span.parentIds).toEqual([span?.span.id ?? ""]);
             expect(child.row.metadata).toMatchObject({
               model: expect.any(String),
               provider: "openai",
             });
-            const expectedOutput = EXPECTED_BATCH_OUTPUTS.get(prompt);
-            if (expectedOutput) {
-              expect(message?.content).toBe(expectedOutput);
-              expect(child.row.error).toBeUndefined();
-            } else {
-              expect(child.output).toBeUndefined();
-              expect(child.row.error).toContain("Batch fixture request failed");
-            }
             expect(child.metrics?.time_to_first_token).toBeUndefined();
           }
+          spec.validateNested?.(nested);
         }
 
         spec.validate?.(span);
