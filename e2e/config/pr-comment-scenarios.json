@@ -167,6 +167,21 @@
     ]
   },
   {
+    "scenarioDirName": "openai-agents-api-instrumentation",
+    "label": "OpenAI Agents API Instrumentation",
+    "metadataScenario": "openai-agents-api-instrumentation",
+    "variants": [
+      {
+        "variantKey": "openai-agents-api-v7",
+        "label": "v7 pinned"
+      },
+      {
+        "variantKey": "openai-agents-api-v7-latest",
+        "label": "v7 latest"
+      }
+    ]
+  },
+  {
     "scenarioDirName": "anthropic-instrumentation",
     "label": "Anthropic Instrumentation",
     "metadataScenario": "anthropic-instrumentation",
@@ -408,8 +423,14 @@
     "label": "LangSmith Instrumentation",
     "metadataScenario": "langsmith-instrumentation",
     "variants": [
-      { "variantKey": "langsmith-v0", "label": "v0 pinned" },
-      { "variantKey": "langsmith-v0-latest", "label": "v0 latest" }
+      {
+        "variantKey": "langsmith-v0",
+        "label": "v0 pinned"
+      },
+      {
+        "variantKey": "langsmith-v0-latest",
+        "label": "v0 latest"
+      }
     ]
   },
   {
@@ -654,10 +675,22 @@
     "label": "Eve Instrumentation",
     "metadataScenario": "eve-instrumentation",
     "variants": [
-      { "variantKey": "eve-v0", "label": "v0 pinned" },
-      { "variantKey": "eve-v0-provider", "label": "v0 provider minimum" },
-      { "variantKey": "eve-v0-latest-pinned", "label": "v0 latest pinned" },
-      { "variantKey": "eve-v0-latest", "label": "v0 latest" }
+      {
+        "variantKey": "eve-v0",
+        "label": "v0 pinned"
+      },
+      {
+        "variantKey": "eve-v0-provider",
+        "label": "v0 provider minimum"
+      },
+      {
+        "variantKey": "eve-v0-latest-pinned",
+        "label": "v0 latest pinned"
+      },
+      {
+        "variantKey": "eve-v0-latest",
+        "label": "v0 latest"
+      }
     ]
   },
   {
@@ -775,6 +808,21 @@
       {
         "variantKey": "wrap-langchain-js-traces-v1-latest",
         "label": "v1 latest"
+      }
+    ]
+  },
+  {
+    "scenarioDirName": "anthropic-vertex-instrumentation",
+    "label": "Anthropic Vertex Instrumentation",
+    "metadataScenario": "anthropic-vertex-instrumentation",
+    "variants": [
+      {
+        "variantKey": "anthropic-vertex-v0",
+        "label": "v0 pinned"
+      },
+      {
+        "variantKey": "anthropic-vertex-v0-latest",
+        "label": "v0 latest"
       }
     ]
   },
