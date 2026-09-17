@@ -1,4 +1,12 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  assert,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import {
   _exportsForTestingOnly,
   initLogger,
@@ -432,6 +440,7 @@ describe("OpenAI Batch instrumentation", () => {
       const child = rows.find(
         (row) => row.span_attributes?.name === "Embedding",
       );
+      assert(child);
       expect(child.error).toContain("Embedding request failed");
       expect(child.output).toEqual({ count });
       expect(child.metrics.end).toEqual(expect.any(Number));
@@ -484,6 +493,7 @@ describe("OpenAI Batch instrumentation", () => {
       const task = pendingRows.find(
         (row) => row.span_attributes?.name === "openai.batch",
       );
+      assert(task);
       expect(task).toMatchObject({
         span_attributes: { type: "task" },
         metadata: { endpoint: "/v1/embeddings", input_file_id: "file_emb" },
@@ -491,6 +501,7 @@ describe("OpenAI Batch instrumentation", () => {
       const child = pendingRows.find(
         (row) => row.span_attributes?.name === "Embedding",
       );
+      assert(child);
       expect(child).toMatchObject({
         span_attributes: { type: "llm" },
         span_parents: [task.span_id],
@@ -538,6 +549,7 @@ describe("OpenAI Batch instrumentation", () => {
       >;
       expect(completedRows).toHaveLength(2);
       const completedChild = completedRows.find((row) => row.id === child.id);
+      assert(completedChild);
       expect(completedChild).toMatchObject({
         span_attributes: { name: "Embedding", type: "llm" },
         span_parents: [task.span_id],
